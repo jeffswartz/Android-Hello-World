@@ -24,21 +24,14 @@ import com.opentok.Subscriber;
 
 /**
  * This application demonstrates the basic workflow for getting started with the OpenTok Android SDK.
- * Currently the user is expected to provide rendering surfaces for the SDK, so we'll create
- * SurfaceHolder instances for each component.
- *  
  */
 public class MainActivity extends Activity implements Publisher.Listener, Subscriber.Listener, Session.Listener {
 	
 	private static final String LOGTAG = "hello-world";
-	private static final boolean AUTO_CONNECT = true;
-	private static final boolean AUTO_PUBLISH = true;
 	
-	/*Fill the following variables using your own Project info from the Dashboard*/
-	private static String API_KEY = "25173032"; // Replace with your API Key
-	private static String SESSION_ID ="1_MX4yNTE3MzAzMn4xMjcuMC4wLjF-TW9uIE1heSAwNiAwMDoyOToyMiBQRFQgMjAxM34wLjIzNjA3NTR-"; // Replace with your generated Session ID
-	// Replace with your generated Token (use Project Tools or from a server-side library)
-	private static String TOKEN = "T1==cGFydG5lcl9pZD0yNTE3MzAzMiZzZGtfdmVyc2lvbj10YnJ1YnktdGJyYi12MC45MS4yMDExLTAyLTE3JnNpZz04YzU2MjM2NzQxM2JjODFlNTQzNzkxY2QzMTFmMDgxNTIwMGY4NWM3OnJvbGU9cHVibGlzaGVyJnNlc3Npb25faWQ9MV9NWDR5TlRFM016QXpNbjR4TWpjdU1DNHdMakYtVFc5dUlFMWhlU0F3TmlBd01Eb3lPVG95TWlCUVJGUWdNakF4TTM0d0xqSXpOakEzTlRSLSZjcmVhdGVfdGltZT0xMzY3ODI1MzY0Jm5vbmNlPTAuNjY5OTA5NDgyMTM3ODM1NCZleHBpcmVfdGltZT0xMzcwNDE3MzY0JmNvbm5lY3Rpb25fZGF0YT0=";
+	// Fill the following variables using your own Project info from https://dashboard.tokbox.com
+	private static String SESSION_ID =""; // Replace with your generated Session ID
+	private static String TOKEN = ""; // Replace with your generated Token (use Project Tools or from a server-side library)
 
 	private ExecutorService executor;
 	private RelativeLayout publisherView;
@@ -47,8 +40,7 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 	private Subscriber subscriber;
 	private Session session;
 	private WakeLock wakeLock;
-	private boolean subscriberToSelf=true; // Change to false if you want to subscribe to streams other than your own.
-
+	private boolean subscribeToSelf=true; // Change to false if you want to subscribe to streams other than your own.
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -68,9 +60,7 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 		wakeLock = powerManager.newWakeLock(PowerManager.FULL_WAKE_LOCK,
 						"Full Wake Lock");
 		
-		if(AUTO_CONNECT){
-			sessionConnect();
-		}
+		sessionConnect();
 	}
 
 	@Override
@@ -90,7 +80,6 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 		if (wakeLock.isHeld()) {
 			wakeLock.release();
 		}
-		
 	}
 
 	@Override
@@ -111,22 +100,15 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 		}
 	}
 	
-	
 	private void sessionConnect(){
-		
 		executor.submit(new Runnable() {
 			public void run() {
-				session = Session.newInstance(MainActivity.this, 
-						SESSION_ID, MainActivity.this);
+				session = Session.newInstance(MainActivity.this, SESSION_ID, MainActivity.this);
 				session.connect(TOKEN);
-			
 			}});
-		
 	}
 
-	
 	private void showAlert(String message){
-		
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		 
 	    builder.setTitle("Message from video session ");
@@ -138,7 +120,6 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 	    });
 	    builder.create();
 	    builder.show();
-	  
 	}
 	
 	@Override
@@ -146,22 +127,13 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 		Log.i(LOGTAG,"session connected");
 		
 		runOnUiThread(new Runnable() {
-
 			@Override
 			public void run() {
-				
-				// Session is ready to publish. 
-				if(AUTO_PUBLISH){
-					//Create Publisher instance.
-					publisher=Publisher.newInstance(MainActivity.this);
-					publisher.setName("hello");
-					publisher.setListener(MainActivity.this);
-					publisherView.addView(publisher.getView());
-					session.publish(publisher);
-				
-						
-				}
-				
+				publisher=Publisher.newInstance(MainActivity.this);
+				publisher.setName("hello");
+				publisher.setListener(MainActivity.this);
+				publisherView.addView(publisher.getView());
+				session.publish(publisher);
 			}});
 	}
 
@@ -172,15 +144,11 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 		runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
-				if(!(subscriberToSelf && session.getConnection().equals(stream.getConnection()) ) || 
-						(!subscriberToSelf && !(session.getConnection().getConnectionId().equals(stream.getConnection().getConnectionId())))){
-						//If this incoming stream is our own Publisher stream, let's look in the mirror.
-						subscriber = Subscriber.newInstance(MainActivity.this, stream);
-						subscriberView.addView(subscriber.getView());	
-						subscriber.setListener(MainActivity.this);
-						session.subscribe(subscriber);
-							
-						
+				if (subscribeToSelf == session.getConnection().equals(stream.getConnection())) {
+					subscriber = Subscriber.newInstance(MainActivity.this, stream);
+					subscriberView.addView(subscriber.getView());
+					subscriber.setListener(MainActivity.this);
+					session.subscribe(subscriber);
 				}
 			}});
 	}
@@ -190,59 +158,47 @@ public class MainActivity extends Activity implements Publisher.Listener, Subscr
 		Log.i(LOGTAG, "publisher is streaming!");
 	}
 
-
 	@Override
 	public void onSessionDroppedStream(Stream stream) {
 		Log.i(LOGTAG, String.format("stream dropped", stream.toString()));
 	}
 
-	
 	@Override
 	public void onSessionDisconnected() {
 		Log.i(LOGTAG, "session disconnected");	
-		showAlert("Session disconnected: "+session.getSessionId());
+		showAlert("Session disconnected: " + session.getSessionId());
 	}
 
 	@Override
 	public void onPublisherStreamingStopped() {
 		Log.i(LOGTAG, "publisher disconnected");	
-
 	}
 
 	@Override
 	public void onPublisherChangedCamera(int cameraId) {
-		Log.i(LOGTAG, "publisher changed camera to cameraId: "+cameraId);	
-		
+		Log.i(LOGTAG, "publisher changed camera to cameraId: " + cameraId);
 	}
-
 
 	@Override
 	public void onSubscriberConnected(Subscriber subscriber) {
 		Log.i(LOGTAG, "subscriber connected");	
-		
 	}
-
 
 	@Override
 	public void onSessionException(OpentokException exception) {
-		Log.e(LOGTAG, "session failed! "+exception.toString());	
-		showAlert("There was an error connecting to session "+session.getSessionId());
+		Log.e(LOGTAG, "session failed! " + exception.toString());
+		showAlert("There was an error connecting to session " + session.getSessionId());
 	}
 	
-
 	@Override
-	public void onSubscriberException(Subscriber arg0, OpentokException exception) {
-		Log.i(LOGTAG, "subscriber "+ subscriber +" failed! "+ exception.toString());	
-		showAlert("There was an error subscribing to stream "+subscriber.getStream().getStreamId());	
+	public void onSubscriberException(Subscriber subscriber, OpentokException exception) {
+		Log.i(LOGTAG, "subscriber " + subscriber + " failed! " + exception.toString());
+		showAlert("There was an error subscribing to stream " + subscriber.getStream().getStreamId());
 	}
 
-	
 	@Override
 	public void onPublisherException(OpentokException exception) {
-		Log.i(LOGTAG, "publisher failed! "+ exception.toString());	
+		Log.i(LOGTAG, "publisher failed! " + exception.toString());
 		showAlert("There was an error publishing");
-	
-		
 	}
-
 }
